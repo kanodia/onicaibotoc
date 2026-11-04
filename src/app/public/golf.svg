@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 620">
+    <!-- The card's artwork for a Chain Golf race, drawn at the app's size. OpenChat loads it with
+         the user's theme in its fragment, eg. golf.svg#oc_theme=dark, so it matches the page. -->
+    <g id="oc_theme=dark"></g>
+    <style>
+        .bg { fill: #ffffff; }
+        .ink { fill: #17202a; }
+        .muted { fill: #5f6b7a; }
+        :root:has([id="oc_theme=dark"]:target) .bg { fill: #0f141b; }
+        :root:has([id="oc_theme=dark"]:target) .ink { fill: #e8ecf3; }
+        :root:has([id="oc_theme=dark"]:target) .muted { fill: #93a0b2; }
+    </style>
+    <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#0f1a2b" />
+            <stop offset="1" stop-color="#1b2d44" />
+        </linearGradient>
+        <linearGradient id="turf" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#2f7d53" />
+            <stop offset="1" stop-color="#173a28" />
+        </linearGradient>
+        <clipPath id="hole">
+            <rect x="12" y="46" width="416" height="220" rx="10" />
+        </clipPath>
+    </defs>
+    <rect class="bg" width="440" height="620" />
+    <text class="ink" x="12" y="30" font-family="system-ui, sans-serif" font-size="16" font-weight="700">Chain Golf race</text>
+    <g clip-path="url(#hole)">
+        <rect x="12" y="46" width="416" height="220" fill="url(#sky)" />
+        <path d="M12 266 L12 190 C60 180 90 150 130 160 C180 175 200 210 250 200 C300 190 320 150 360 165 C390 176 410 172 428 170 L428 266 Z" fill="url(#turf)" />
+        <path d="M12 190 C60 180 90 150 130 160 C180 175 200 210 250 200 C300 190 320 150 360 165 C390 176 410 172 428 170" fill="none" stroke="#5fbf86" stroke-width="2" />
+        <rect x="190" y="150" width="34" height="6" fill="#b98a56" stroke="#6e4f2e" transform="rotate(-8 207 153)" />
+        <line x1="366" y1="167" x2="366" y2="131" stroke="#e8ecf3" stroke-width="2" />
+        <path d="M366 131 L380 136 L366 141 Z" fill="#ff6b6b" />
+        <path d="M40 175 Q120 70 210 120" fill="none" stroke="rgba(94,242,200,.55)" stroke-width="2" stroke-dasharray="4 5" />
+        <circle cx="40" cy="178" r="4" fill="#fff" stroke="#0b0d12" stroke-width="1.5" />
+    </g>
+    <text class="muted" x="12" y="296" font-family="system-ui, sans-serif" font-size="13">Today's hole, played inside a smart contract.</text>
+    <text class="muted" x="12" y="316" font-family="system-ui, sans-serif" font-size="13">Every shot simulated by Box2D on 13 nodes.</text>
+    <text class="ink" x="12" y="356" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Fewest strokes wins</text>
+    <text class="muted" x="12" y="600" font-family="system-ui, sans-serif" font-size="11">by onicai · play.onicai.com</text>
+</svg>

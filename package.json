@@ -1,0 +1,29 @@
+{
+    "name": "onicai-bot",
+    "version": "0.1.0",
+    "private": true,
+    "description": "OnicaiBot: onicai's on-chain games, played from MiniApp cards in OpenChat chats",
+    "main": "dist/server/server.js",
+    "scripts": {
+        "build": "tsc -p tsconfig.json && vite build",
+        "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.app.json",
+        "dev": "vite build && tsx watch src/server.ts",
+        "start": "node dist/server/server.js",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "@open-ic/openchat-botclient-ts": "file:vendor/open-ic-openchat-botclient-ts-1.0.69.tgz",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.21.1"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.8.17",
+        "@types/express": "^4.17.21",
+        "@types/node": "^22.10.5",
+        "tsx": "^4.19.2",
+        "typescript": "^5.7.3",
+        "vite": "^6.0.5",
+        "vitest": "^3.0.6"
+    }
+}
