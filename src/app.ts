@@ -5,7 +5,7 @@ import express, { type Express, type Request, type Response } from "express";
 import path from "node:path";
 import { definition } from "./definition";
 import type { Deps } from "./deps";
-import { golfShot, golfSave, settings } from "./handlers/api";
+import { go, golfShot, golfSave, settings } from "./handlers/api";
 import { join, leave, start } from "./handlers/miniApp";
 import { executeCommand } from "./handlers/play";
 
@@ -33,6 +33,7 @@ export function createApp(deps: Deps, appDir: string): Express {
 
     // Players' apps, with a player token in a header
     app.post("/api/settings", express.json(), handle(settings));
+    app.post("/api/go", handle(go));
     app.post("/api/golf/shot", express.json(), handle(golfShot));
     app.post("/api/golf/save", handle(golfSave));
 

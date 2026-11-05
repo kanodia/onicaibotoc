@@ -58,6 +58,9 @@ async function main() {
             case "start":
                 void start();
                 break;
+            case "go":
+                void go();
+                break;
             case "reload":
                 location.reload();
                 break;
@@ -102,6 +105,22 @@ async function start() {
         if (!accepted) showNotice(message ?? "The game couldn't start");
     } catch (err) {
         showNotice(String(err));
+    }
+    starting = false;
+    render();
+}
+
+/** Sets the race off with entries open: whoever joins later plays at once */
+async function go() {
+    if (oc === undefined || oc.role !== "player" || oc.finished || starting) return;
+    starting = true;
+    render();
+    try {
+        const response = await oc.fetch("/api/go", { method: "POST" });
+        const result = (await response.json()) as { ok: boolean; error?: string };
+        if (!result.ok) showNotice(result.error ?? "The race couldn't start");
+    } catch {
+        showNotice("Couldn't reach the game");
     }
     starting = false;
     render();
@@ -260,10 +279,14 @@ function lobbyParts(info: Lobby): Record<Exclude<(typeof LOBBY_PARTS)[number], "
                       .map((s) => `<li>${escape(s.name)}${s.id === oc?.userId ? " <em>(you)</em>" : ""}</li>`)
                       .join("")}</ul>`,
         // Only OpenChat's Join button, under the card, can join someone, so the lobby points to it
+        // Two ways to start: teeing off keeps entries open, so friends join and play as they come;
+        // OpenChat's start races only those in now, and the card records them
         action: player
-            ? `<p class="center"><button class="primary" data-action="start" ${starting ? "disabled" : ""}>
-               ${starting ? "Starting…" : "Start the race"}</button></p>
-           <p class="muted center small">${info.hint} Waiting for friends? They tap <b>Join</b> under this card.</p>`
+            ? `<p class="center"><button class="primary" data-action="go" ${starting ? "disabled" : ""}>
+               ${starting ? "Starting…" : "⛳ Tee off now"}</button></p>
+           <p class="muted center small">The clock starts, and anyone can still tap <b>Join</b> under this card and play until it runs out.</p>
+           <p class="center"><button data-action="start" ${starting ? "disabled" : ""}>🔒 Race with just us</button></p>
+           <p class="muted center small">${info.hint} Nobody else can join.</p>`
             : `<p class="join-here">👇 Tap <b>Join</b> under this card to play</p>
            <p class="muted center small">Up to ${info.maxPlayers} can race. Once you've joined, the host starts it.</p>`,
     };

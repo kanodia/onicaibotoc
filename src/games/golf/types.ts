@@ -79,6 +79,8 @@ export type GolfShared = {
     seats: { id: string; name: string }[];
     startedAt?: number;
     endsAt?: number;
+    /** Started through OpenChat, so nobody else can join; until then, anyone can, and plays at once */
+    entriesClosed?: boolean;
     finishedAt?: number;
     ended?: GolfEnded | "time";
     winner?: string;
@@ -128,8 +130,8 @@ export const GOLF_SETTINGS: readonly SettingSpec[] = [
     {
         id: "minutes",
         label: "Time limit",
-        choices: [3, 5, 10, 15].map((m) => ({ value: m, label: `${m} minutes` })),
-        default: 5,
+        choices: [3, 5, 10, 15, 30, 60].map((m) => ({ value: m, label: `${m} minutes` })),
+        default: 15,
     },
 ];
 

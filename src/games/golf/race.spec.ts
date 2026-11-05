@@ -157,7 +157,7 @@ describe("the race", () => {
         race.setHole(course());
         race.start();
         expect(race.teeing().map((g) => g.id)).toEqual(["alice"]);
-        now += 5 * 60_000;
+        now += 15 * 60_000;
         expect(race.teeing()).toEqual([]);
     });
 
@@ -170,7 +170,7 @@ describe("the race", () => {
 
     it("waits past the time for a shot that went before it, but not for ever", () => {
         const { race, advance } = started();
-        advance(5 * 60_000 - 1000);
+        advance(15 * 60_000 - 1000);
         race.beginShot("alice");
         advance(1000);
         expect(race.endIfTimeUp()).toBe(false);
@@ -184,7 +184,7 @@ describe("the race", () => {
     it("ends on time when no shot's in the air, won by whoever's holed it", () => {
         const { race, advance } = started();
         race.recordShot("bob", shot(round(2), 4, "holed", 40));
-        advance(5 * 60_000);
+        advance(15 * 60_000);
         expect(race.endIfTimeUp()).toBe(true);
         expect(race.shared()).toMatchObject({ ended: "time", winner: "bob" });
     });
@@ -219,3 +219,70 @@ describe("thin", () => {
         expect(path[path.length - 1]).toEqual([99.67, 42.71]);
     });
 });
+
+describe("a race with entries open", () => {
+    /** Alice sets it off on her own, with entries left open */
+    function setOff() {
+        let now = START;
+        const race = GolfRace.create({ id: "alice", name: "Alice" }, undefined, { now: () => now });
+        race.join("alice", "Alice");
+        race.setHole(course());
+        expect(race.setOff("alice")).toBeUndefined();
+        race.setRound("alice", round(1));
+        return { race, advance: (ms: number) => (now += ms) };
+    }
+
+    it("lets someone join after it's set off, and race at once", () => {
+        const { race } = setOff();
+        expect(race.phase).toBe("active");
+        expect(race.join("bob", "Bob")).toBeUndefined();
+        expect(race.isPlayer("bob")).toBe(true);
+        expect(race.teeing().map((g) => g.id)).toEqual(["bob"]);
+    });
+
+    it("only lets someone in it set it off", () => {
+        const race = GolfRace.create(undefined, undefined, { now: () => START });
+        race.join("alice", "Alice");
+        race.setHole(course());
+        expect(race.setOff("carol")).toMatch(/Join/);
+        expect(race.phase).toBe("open");
+    });
+
+    it("doesn't end when everyone's done, as more may join", () => {
+        const { race } = setOff();
+        race.recordShot("alice", shot(round(1), 2, "holed", 40));
+        expect(race.phase).toBe("active");
+        expect(race.join("bob", "Bob")).toBeUndefined();
+    });
+
+    it("ends once entries close with everyone done", () => {
+        const { race } = setOff();
+        race.recordShot("alice", shot(round(1), 2, "holed", 40));
+        expect(race.start()).toEqual(["alice"]);
+        expect(race.phase).toBe("finished");
+        expect(race.result()).toMatch(/won with 2 strokes/);
+    });
+
+    it("lets nobody join once entries close, or once the time's up", () => {
+        const { race, advance } = setOff();
+        race.start();
+        expect(race.join("bob", "Bob")).toMatch(/started/);
+        const other = setOff();
+        other.advance(15 * 60_000);
+        expect(other.race.join("bob", "Bob")).toMatch(/started/);
+        advance(0);
+    });
+
+    it("ends on time, won by the best who holed it, whenever they joined", () => {
+        const { race, advance } = setOff();
+        advance(60_000);
+        race.join("bob", "Bob");
+        race.setRound("bob", round(2));
+        race.recordShot("alice", shot(round(1), 4, "holed", 40));
+        race.recordShot("bob", shot(round(2), 2, "holed", 40));
+        advance(15 * 60_000);
+        expect(race.endIfTimeUp()).toBe(true);
+        expect(race.result()).toMatch(/UserId\(bob\) won with 2 strokes/);
+    });
+});
+

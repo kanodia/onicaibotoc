@@ -222,9 +222,20 @@ export class GolfRace extends Race<Golfer, GolfEnded, GolfData, GolfShared> {
             golfer.doneAt = Math.max(0, (shotAt ?? now) - startedAt);
         }
         this.changed();
-        if (this.data.players.every((g) => g.status === "holed" || g.status === "gave_up")) {
-            this.finish("all_done", this.leader(), now);
+        this.#finishIfAllDone();
+    }
+
+    /** Once nobody else can join, the race ends as soon as everyone's done */
+    #finishIfAllDone(): void {
+        const d = this.data;
+        if (d.phase !== "active" || !d.entriesClosed) return;
+        if (d.players.every((g) => g.status === "holed" || g.status === "gave_up")) {
+            this.finish("all_done", this.leader(), this.now());
         }
+    }
+
+    protected override entriesClosedNow(): void {
+        this.#finishIfAllDone();
     }
 
     /** Waits past the time for any shot that went to the canister before it, for a while */
