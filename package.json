@@ -12,7 +12,7 @@
         "test": "vitest run"
     },
     "dependencies": {
-        "@open-ic/openchat-botclient-ts": "file:vendor/open-ic-openchat-botclient-ts-1.0.69.tgz",
+        "@open-ic/openchat-botclient-ts": "file:vendor/open-ic-openchat-botclient-ts-1.0.69-6f97f59.tgz",
         "cors": "^2.8.5",
         "dotenv": "^16.4.5",
         "express": "^4.21.1"

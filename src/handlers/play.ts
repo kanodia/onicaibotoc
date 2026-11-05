@@ -58,8 +58,8 @@ async function play(client: BotClient, res: Response, deps: Deps): Promise<void>
         return;
     }
     const miniApps = deps.useApiGateway(client.apiGateway);
-    // The host, named now, as the lobby says who can change the settings before they've joined.
-    // Looked up alongside the card, so a slow lookup doesn't sit between the post token and the post.
+    // The host, named now, as they're playing from the post. Looked up alongside the card, so a slow
+    // lookup doesn't sit between the post token and the post.
     const initiator = client.initiator;
     const hostName = initiator === undefined ? undefined : deps.names.lookup(initiator);
 
@@ -78,10 +78,13 @@ async function play(client: BotClient, res: Response, deps: Deps): Promise<void>
         initiator === undefined || hostName === undefined
             ? undefined
             : { id: initiator, name: await hostName };
-    // With the default settings, which the host can change in the lobby
-    deps.store.create(miniAppGame, game.create(deps.gameConfig, host));
+    // With the default settings, which the host can change in the lobby, and the host playing: the
+    // service has them on the card from its post, as the bot asks, without asking the bot
+    const play = game.create(deps.gameConfig, host);
+    if (host !== undefined) play.join(host.id, host.name);
+    deps.store.create(miniAppGame, play);
     try {
-        await post(miniApps, token, card);
+        await post(miniApps, token, card, host !== undefined);
     } catch (err) {
         deps.store.delete(miniAppGame);
         const reason =
@@ -105,11 +108,19 @@ async function play(client: BotClient, res: Response, deps: Deps): Promise<void>
     res.json({ message: card.toResponse() });
 }
 
-/** Posts the card, trying again with the same token while the service can't reach OpenChat */
-async function post(miniApps: MiniAppServiceClient, token: string, card: MiniAppMessage) {
+/**
+ * Posts the card, with the host on it if there is one, trying again with the same token while the
+ * service can't reach OpenChat
+ */
+async function post(
+    miniApps: MiniAppServiceClient,
+    token: string,
+    card: MiniAppMessage,
+    joinInitiator: boolean,
+) {
     for (let attempt = 1; ; attempt++) {
         try {
-            await miniApps.post(token, card);
+            await miniApps.post(token, card, { joinInitiator });
             return;
         } catch (err) {
             const again =

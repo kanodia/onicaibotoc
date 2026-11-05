@@ -3,8 +3,9 @@
 [onicai](https://play.onicai.com)'s on-chain games, played inside [OpenChat](https://oc.app) chats.
 
 `/play` posts a game card in a group or channel. The command's `game` parameter is a dropdown of
-the games. People join from the card, a player starts the game, and it's played in the card, in
-this bot's page, which OpenChat opens in a frame. Everyone else in the chat can watch.
+the games. Whoever ran the command is playing from the start, as the host. Others join from the
+card, a player starts the game, and it's played in the card, in this bot's page, which OpenChat
+opens in a frame. Everyone else in the chat can watch.
 
 The first game is a **Chain Golf race**:
 
@@ -77,8 +78,9 @@ To set the bot up in OpenChat:
 3. Run `/play` and pick Chain Golf race.
 
 `vendor/` holds a build of OpenChat's TypeScript bot SDK, `@open-ic/openchat-botclient-ts`
-1.0.69, from open-chat-bots `main`. npm's latest release is 1.0.65, which predates MiniApps. Once a
-newer version is published, depend on that instead.
+1.0.69, from open-chat-bots `main` at 6f97f59. That's the first commit whose card posts can have
+the host playing (`joinInitiator`). npm's latest release is 1.0.65, which predates MiniApps. Once
+a newer version is published, depend on that instead.
 
 ## Deploying
 
