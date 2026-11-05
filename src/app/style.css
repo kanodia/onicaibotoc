@@ -313,3 +313,14 @@ canvas.hole {
     font-weight: 600;
     text-decoration: none;
 }
+
+.join-here {
+    text-align: center;
+    margin: 12px 0 4px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    font-size: 1.05em;
+    font-weight: 600;
+}
