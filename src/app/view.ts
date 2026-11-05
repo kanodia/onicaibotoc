@@ -21,6 +21,8 @@ export type Lobby = {
     };
     /** Under the Start button, eg. what starting does */
     hint: string;
+    /** How many can join */
+    maxPlayers: number;
 };
 
 export type ViewContext = {

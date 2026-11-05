@@ -259,11 +259,13 @@ function lobbyParts(info: Lobby): Record<Exclude<(typeof LOBBY_PARTS)[number], "
                 : `<ul class="seats">${seats
                       .map((s) => `<li>${escape(s.name)}${s.id === oc?.userId ? " <em>(you)</em>" : ""}</li>`)
                       .join("")}</ul>`,
+        // Only OpenChat's Join button, under the card, can join someone, so the lobby points to it
         action: player
             ? `<p class="center"><button class="primary" data-action="start" ${starting ? "disabled" : ""}>
                ${starting ? "Starting…" : "Start the race"}</button></p>
-           <p class="muted center small">${info.hint}</p>`
-            : `<p class="muted center">Join from the card in the chat to play. Watching starts when a player does.</p>`,
+           <p class="muted center small">${info.hint} Waiting for friends? They tap <b>Join</b> under this card.</p>`
+            : `<p class="join-here">👇 Tap <b>Join</b> under this card to play</p>
+           <p class="muted center small">Up to ${info.maxPlayers} can race. Once you've joined, the host starts it.</p>`,
     };
 }
 

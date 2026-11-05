@@ -6,6 +6,7 @@ import {
     GAME_ID,
     GOLF_SETTINGS,
     MAX_ANGLE,
+    MAX_PLAYERS,
     MAX_POWER,
     MIN_ANGLE,
     MIN_POWER,
@@ -143,6 +144,7 @@ export const golfView: GameView = {
             seats: s.seats,
             settings: { specs: GOLF_SETTINGS, current: s.settings, host: s.host, hostName: s.hostName },
             hint: "Everyone who's joined tees off at once.",
+            maxPlayers: MAX_PLAYERS,
         };
     },
 
@@ -260,7 +262,8 @@ function hud(course: Course, golfer?: GolferView): string {
 
 function statusText(): string {
     const g = myGolfer();
-    if (g === undefined) return "You're watching the race.";
+    // A race takes players only until it starts
+    if (g === undefined) return "You're watching: this race has started. Type /play for a new one to join.";
     if (shooting) return "The canister is simulating your shot on 13 nodes…";
     switch (g.status) {
         case "teeing":
@@ -299,9 +302,9 @@ async function askSave() {
 
 function finishedText(s: GolfShared): string {
     const winner = s.golfers.find((g) => g.id === s.winner);
-    if (winner === undefined) return "Nobody holed it.";
+    if (winner === undefined) return "Nobody holed it. Type /play to race again.";
     const strokes = winner.strokes === 1 ? "a hole in one" : `${winner.strokes} strokes`;
-    return `${winner.name} won with ${strokes}.`;
+    return `${winner.name} won with ${strokes}. Type /play to race again.`;
 }
 
 function standings(s: GolfShared): string {

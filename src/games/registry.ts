@@ -46,9 +46,10 @@ export const CHAIN_GOLF: GameType = {
     id: GOLF_ID,
     title: "Chain Golf race",
     image: "app/golf.svg",
+    // Joining is OpenChat's own Join button, under the card, so the card says where it is
     cardText:
-        `**Chain Golf race** · up to ${GOLF_MAX_PLAYERS} players on today's hole · ` +
-        "every shot simulated by Box2D on-chain, by onicai",
+        `⛳ **Chain Golf race** · tap **Join** under this card to play, up to ${GOLF_MAX_PLAYERS} ` +
+        "players · the host taps Start · every shot simulated by Box2D on-chain, by onicai",
     maxPlayers: GOLF_MAX_PLAYERS,
     spectators: true,
     settings: GOLF_SETTINGS,
