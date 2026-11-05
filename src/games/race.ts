@@ -1,6 +1,8 @@
 // What every race has in common, whatever's raced: up to so many join, the host changes the
 // settings in the lobby, and once someone starts it, everyone seated races at once, each on their
-// own, until everyone's done or the time's up, when whoever's furthest on wins. A race keeps its
+// own, until everyone's done or the time's up, when whoever's furthest on wins. A player can set it
+// off with entries still open, so whoever joins later races as they come, until a player closes
+// entries with OpenChat's own start or the time's up. A race keeps its
 // whole state in its data, which the store writes as it is. Adapted from OpenChat's MiniGameBot.
 import {
     PUBLISH_EVERY_MS,
@@ -28,6 +30,8 @@ export type RaceData<R extends Seat, E extends string> = {
     startedAt?: number;
     /** When the race ends if nobody's won it before */
     endsAt?: number;
+    /** Started through OpenChat, so nobody else can join: until then, anyone can, and race at once */
+    entriesClosed?: boolean;
     finishedAt?: number;
     ended?: E | "time";
     winner?: string;
@@ -64,6 +68,7 @@ export type RaceBase<E extends string> = {
     seats: Seat[];
     startedAt?: number;
     endsAt?: number;
+    entriesClosed?: boolean;
     finishedAt?: number;
     ended?: E | "time";
     winner?: string;
@@ -129,13 +134,31 @@ export abstract class Race<R extends Seat, E extends string, D extends RaceData<
 
     join(userId: string, name: string): string | undefined {
         const d = this.data;
-        if (d.phase !== "open") return this.#started();
         if (this.isSeated(userId)) return undefined;
         const max = this.#spec.maxPlayers;
+        if (d.phase === "active" && this.entriesOpen()) {
+            // A race under way with entries open: they race from now
+            if (d.players.length >= max) return `All ${max} places are taken`;
+            d.players.push(...this.begin([{ id: userId, name }], this.now()));
+            this.changed();
+            return undefined;
+        }
+        if (d.phase !== "open") return this.#started();
         if (d.seats.length >= max) return `All ${max} places are taken`;
         d.seats.push({ id: userId, name });
         this.changed();
         return undefined;
+    }
+
+    /** Whether someone can still join: in the lobby, or racing with entries open and time left */
+    entriesOpen(): boolean {
+        const d = this.data;
+        if (d.phase === "open") return true;
+        return (
+            d.phase === "active" &&
+            !d.entriesClosed &&
+            (d.endsAt === undefined || this.now() < d.endsAt)
+        );
     }
 
     /** Frees the seat before the start; a racer who leaves after it stays where they've got to */
@@ -167,20 +190,49 @@ export abstract class Race<R extends Seat, E extends string, D extends RaceData<
         return this.data.seats.length === 0 ? "Nobody has joined yet" : undefined;
     }
 
-    /** Starts everyone seated, as `begin` sets them off, with the race's time running */
+    /**
+     * OpenChat's start: starts everyone seated, if the race hasn't started, and closes entries, so
+     * the card records who raced. The players.
+     */
     start(): string[] {
         const d: RaceData<R, E> = this.data;
-        if (d.phase === "open" && d.seats.length > 0) {
-            const now = this.now();
-            d.players = this.begin(d.seats, now);
-            d.seats = [];
-            d.phase = "active";
-            d.startedAt = now;
-            d.endsAt = now + this.lengthMs();
+        if (d.phase === "open" && d.seats.length > 0) this.#setOff();
+        if (d.phase === "active" && !d.entriesClosed) {
+            d.entriesClosed = true;
             this.changed();
+            this.entriesClosedNow();
         }
         return d.players.map((p) => p.id);
     }
+
+    /**
+     * A player sets the race off without OpenChat's start, so entries stay open: whoever joins
+     * later races at once. Undefined once it's under way, or why it can't be.
+     */
+    setOff(userId: string): string | undefined {
+        const d = this.data;
+        if (d.phase !== "open") return d.phase === "active" ? undefined : this.#started();
+        if (!this.isSeated(userId)) return "Join the race first";
+        const cannot = this.cannotStart();
+        if (cannot !== undefined) return cannot;
+        this.#setOff();
+        return undefined;
+    }
+
+    /** Everyone seated races, with the race's time running */
+    #setOff(): void {
+        const d: RaceData<R, E> = this.data;
+        const now = this.now();
+        d.players = this.begin(d.seats, now);
+        d.seats = [];
+        d.phase = "active";
+        d.startedAt = now;
+        d.endsAt = now + this.lengthMs();
+        this.changed();
+    }
+
+    /** Entries have just closed, eg. so a race whose racers are all done ends now */
+    protected entriesClosedNow(): void {}
 
     /** Sets up what's raced on as the race starts, eg. its hole, and each racer's start */
     protected abstract begin(seats: readonly Seat[], now: number): R[];
@@ -254,6 +306,7 @@ export abstract class Race<R extends Seat, E extends string, D extends RaceData<
             seats: d.seats.map((s) => ({ ...s })),
             startedAt: d.startedAt,
             endsAt: d.endsAt,
+            entriesClosed: d.entriesClosed,
             finishedAt: d.finishedAt,
             ended: d.ended,
             winner: d.winner,

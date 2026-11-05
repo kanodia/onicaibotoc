@@ -324,3 +324,13 @@ canvas.hole {
     font-size: 1.05em;
     font-weight: 600;
 }
+
+button.link {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--accent);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}

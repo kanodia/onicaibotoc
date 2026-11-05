@@ -74,6 +74,25 @@ export async function settings(req: Request, res: Response, deps: Deps): Promise
 }
 
 /**
+ * `POST /api/go`: a player sets the race off without OpenChat's start, so entries stay open and
+ * whoever joins later plays at once, until the time's up or a player closes entries
+ */
+export async function go(req: Request, res: Response, deps: Deps): Promise<void> {
+    const p = await player(req, res, deps);
+    if (p === undefined) return;
+    const refusal = p.play.setOff?.(p.userId) ?? "This game starts from OpenChat's Start";
+    if (refusal !== undefined) {
+        res.status(409).json({ ok: false, error: refusal });
+        return;
+    }
+    deps.store.save();
+    deps.publisher.publish(p.game);
+    // Each golfer's round on the chain, so it's ready by the time they shoot
+    deps.golf.prepare(p.game);
+    res.json({ ok: true });
+}
+
+/**
  * `POST /api/golf/shot`: a golfer's shot, `{ angle, power }`, which the bot plays on the canister,
  * answered with the ball's whole flight once it has, a second or two later
  */

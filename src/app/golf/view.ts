@@ -221,6 +221,7 @@ function liveSkeleton(): string {
             <button class="primary" data-action="shoot">Shoot</button>
         </div>
         <p class="status" data-part="status"></p>
+        <div data-part="entries"></div>
         <ol class="standings" data-part="standings"></ol>
         <p class="save" data-part="save"></p>
     </section>`;
@@ -242,6 +243,8 @@ function update(section: HTMLElement) {
     if (left > 0) timeUpTimer = setTimeout(() => ctx.render(), left);
     syncAim(section);
     part("status").textContent = s.phase === "finished" ? finishedText(s) : statusText();
+    const entries = entriesHtml(s, golfer !== undefined);
+    if (part("entries").innerHTML !== entries) part("entries").innerHTML = entries;
     const rows = standings(s);
     if (part("standings").innerHTML !== rows) part("standings").innerHTML = rows;
     // Once the golfer's round is over, it can go to their onicai profile
@@ -262,8 +265,11 @@ function hud(course: Course, golfer?: GolferView): string {
 
 function statusText(): string {
     const g = myGolfer();
-    // A race takes players only until it starts
-    if (g === undefined) return "You're watching: this race has started. Type /play for a new one to join.";
+    if (g === undefined) {
+        return shared?.entriesClosed
+            ? "You're watching: entries are closed. Type /play for a new race to join."
+            : "You're watching.";
+    }
     if (shooting) return "The canister is simulating your shot on 13 nodes…";
     switch (g.status) {
         case "teeing":
@@ -277,6 +283,18 @@ function statusText(): string {
                 ? "Drag back from your ball to aim, or use the sliders, then shoot."
                 : `Shot ${g.strokes + 1}: you play from where your ball stopped.`;
     }
+}
+
+/** While entries are open: anyone can join, and a player can close them */
+function entriesHtml(s: GolfShared, playing: boolean): string {
+    if (s.phase !== "active" || s.entriesClosed) return "";
+    const left = s.endsAt === undefined || s.endsAt > Date.now();
+    if (!left) return "";
+    if (!playing) {
+        return `<p class="join-here">👇 Entries are open: tap <b>Join</b> under this card and play now</p>`;
+    }
+    return `<p class="muted center small">🟢 Entries open: anyone can tap <b>Join</b> under this card and race until the clock runs out ·
+        <button class="link" data-action="start">🔒 Close entries</button></p>`;
 }
 
 function saveLink(): string {

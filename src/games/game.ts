@@ -34,6 +34,11 @@ export interface Game {
      */
     join(userId: string, name: string): string | undefined;
     /**
+     * A player sets the game off, keeping it open to more players, who play as they join. Undefined
+     * once it's under way, or why it can't be. A game that only starts through OpenChat has none.
+     */
+    setOff?(userId: string): string | undefined;
+    /**
      * The service says the user isn't in the game. Before the start their seat is freed; after it,
      * the game decides. Whether the game changed.
      */

@@ -49,7 +49,8 @@ export const CHAIN_GOLF: GameType = {
     // Joining is OpenChat's own Join button, under the card, so the card says where it is
     cardText:
         `⛳ **Chain Golf race** · tap **Join** under this card to play, up to ${GOLF_MAX_PLAYERS} ` +
-        "players · the host taps Start · every shot simulated by Box2D on-chain, by onicai",
+        "players, and join any time until the clock runs out · every shot simulated by Box2D " +
+        "on-chain, by onicai",
     maxPlayers: GOLF_MAX_PLAYERS,
     spectators: true,
     settings: GOLF_SETTINGS,
