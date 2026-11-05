@@ -14,6 +14,7 @@ import {
     MAX_POWER,
     MIN_ANGLE,
     MIN_POWER,
+    type SaveResponse,
     type ShotRequest,
     type ShotResponse,
 } from "../games/golf/types";
@@ -87,6 +88,22 @@ export async function golfShot(req: Request, res: Response, deps: Deps): Promise
     }
     const answer = await deps.golf.shoot(p.game, p.userId, shot.angle, shot.power);
     res.status(answer.ok ? 200 : 409).json(answer);
+}
+
+/**
+ * `POST /api/golf/save`: the page that saves the player's own round to their onicai profile. Only
+ * they get it, as it holds their round's key; their OpenChat name never goes to onicai.
+ */
+export async function golfSave(req: Request, res: Response, deps: Deps): Promise<void> {
+    const p = await player(req, res, deps);
+    if (p === undefined) return;
+    const url = deps.golf.saveUrl(p.game, p.userId);
+    if (url === undefined) {
+        const error = "Take your first shot, then your round can be saved";
+        res.status(409).json({ ok: false, error } satisfies SaveResponse);
+        return;
+    }
+    res.json({ ok: true, url } satisfies SaveResponse);
 }
 
 /** The shot, to a tenth of a degree and a tenth of a percent, as onicai's page sends it */

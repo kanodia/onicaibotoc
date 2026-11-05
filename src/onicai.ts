@@ -81,6 +81,27 @@ export class Onicai {
         return checked(answer.round, isRound(answer.round));
     }
 
+    /**
+     * Posts a finished race to onicai's feed, as one post: each round with its key, which proves
+     * the bot played it. The post names only the golfers who saved their round to an onicai
+     * profile with a username, as the bot never sends anyone's OpenChat name. Posting the same race
+     * again gives the same post.
+     */
+    async postRace(rounds: readonly { id: number; key: string }[]): Promise<{ id: number }> {
+        const body = rounds.map((r) => `${r.id} ${oneLine(r.key)}`).join("\n");
+        const post = await this.#call<{ id: number }>("POST", "/api/feed/race", body);
+        return checked(post, isNumber(post.id));
+    }
+
+    /**
+     * The page that saves a round to the player's onicai profile: it keeps the round's key in the
+     * browser, as a round played there, and the profile takes it once they log in. The key is in
+     * the fragment, so it never reaches a server.
+     */
+    saveUrl(roundId: number, key: string): string {
+        return `${this.baseUrl}/golf/${roundId}#save=${encodeURIComponent(key)}`;
+    }
+
     async #call<T>(method: "GET" | "POST", path: string, body?: string): Promise<T> {
         let response: Response;
         try {

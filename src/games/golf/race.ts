@@ -39,6 +39,8 @@ export type Golfer = Seat & {
 export type GolfData = RaceData<Golfer, GolfEnded> & {
     /** The hole: before the start, the one for the settings' level; from it, the one played */
     course?: Course;
+    /** onicai's feed post of the finished race, once it's posted, or 0 if it won't be */
+    feedPost?: number;
 };
 
 const SPEC: RaceSpec = { settings: GOLF_SETTINGS, maxPlayers: MAX_PLAYERS };
@@ -119,6 +121,20 @@ export class GolfRace extends Race<Golfer, GolfEnded, GolfData, GolfShared> {
 
     golfer(userId: string): Golfer | undefined {
         return this.racer(userId);
+    }
+
+    /** The rounds to post to onicai's feed: the finished race's, until it's posted */
+    feedRounds(): { id: number; key: string }[] {
+        const d = this.data;
+        if (d.phase !== "finished" || d.feedPost !== undefined) return [];
+        return d.players.flatMap((g) =>
+            g.roundId !== undefined && g.key !== undefined && g.strokes > 0 ? [{ id: g.roundId, key: g.key }] : [],
+        );
+    }
+
+    /** The race is on onicai's feed as `post`, or won't be, as 0 */
+    posted(post: number): void {
+        this.data.feedPost = post;
     }
 
     /** The golfer's new round on the canister. Whether the race changed. */

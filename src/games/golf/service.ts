@@ -10,6 +10,8 @@ import { utcDay, type Course, type ShotResponse } from "./types";
 
 /** How long a failed call waits before it's tried again by the sweep */
 const RETRY_MS = 5000;
+/** How often a race's post to onicai's feed is tried before it's given up */
+const POST_TRIES = 5;
 
 export class GolfService {
     /** Each day's holes, by level */
@@ -17,6 +19,9 @@ export class GolfService {
     readonly #holesLoading = new Map<number, Promise<Course>>();
     /** Rounds being started, by game and golfer */
     readonly #teeing = new Map<string, Promise<void>>();
+    /** Finished races being posted to onicai's feed, and how often each has been tried */
+    readonly #posting = new Set<string>();
+    readonly #postTries = new Map<string, number>();
     /** When a failed call may be tried again, by what it was for */
     readonly #retryAt = new Map<string, number>();
 
@@ -31,7 +36,62 @@ export class GolfService {
 
     /** Every second, from the sweep: gets every race what it's waiting for from the canister */
     tick(): void {
-        for (const { game } of this.store.entries()) this.prepare(game);
+        for (const { game } of this.store.entries()) {
+            this.prepare(game);
+            this.#post(game);
+        }
+    }
+
+    /** The page that saves the golfer's round to their onicai profile, once they have a round */
+    saveUrl(game: MiniAppGame, userId: string): string | undefined {
+        const golfer = this.#race(game)?.golfer(userId);
+        if (golfer?.roundId === undefined || golfer.key === undefined) return undefined;
+        return this.onicai.saveUrl(golfer.roundId, golfer.key);
+    }
+
+    /**
+     * Posts a finished race to onicai's feed, once, so the race shows there with its winner. Tried
+     * again by the sweep when onicai doesn't answer; a race nobody shot in isn't posted.
+     */
+    #post(game: MiniAppGame): void {
+        const race = this.#race(game);
+        if (race === undefined || race.phase !== "finished" || race.data.feedPost !== undefined) return;
+        const key = miniAppGameKey(game);
+        const retryKey = `post:${key}`;
+        if (this.#posting.has(key) || (this.#retryAt.get(retryKey) ?? 0) > this.now()) return;
+        const rounds = race.feedRounds();
+        if (rounds.length === 0) {
+            race.posted(0);
+            this.store.save();
+            return;
+        }
+        this.#posting.add(key);
+        this.onicai
+            .postRace(rounds)
+            .then(
+                (post) => {
+                    race.posted(post.id);
+                    this.#retryAt.delete(retryKey);
+                    this.#postTries.delete(key);
+                },
+                (err) => {
+                    const tries = (this.#postTries.get(key) ?? 0) + 1;
+                    console.error(`Couldn't post ${key} to onicai's feed (try ${tries}):`, err);
+                    // A refusal won't change, and onicai may be down for long: either way, in time
+                    // the race is left off the feed
+                    if ((err instanceof OnicaiError && err.status !== undefined && err.status < 500) || tries >= POST_TRIES) {
+                        race.posted(0);
+                        this.#postTries.delete(key);
+                    } else {
+                        this.#postTries.set(key, tries);
+                        this.#retryAt.set(retryKey, this.now() + RETRY_MS * tries);
+                    }
+                },
+            )
+            .finally(() => {
+                this.#posting.delete(key);
+                this.store.save();
+            });
     }
 
     /**
