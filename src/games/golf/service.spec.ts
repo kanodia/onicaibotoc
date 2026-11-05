@@ -138,4 +138,64 @@ describe("GolfService", () => {
         await golf.shoot(GAME, "alice", 45, 60);
         expect(golfRound).not.toHaveBeenCalled();
     });
+
+    /** A race Alice won with a hole in one, on round 9 */
+    async function wonRace(onicai: Partial<Onicai>) {
+        const golfShot = vi.fn().mockResolvedValue({
+            frames: [],
+            round: { ...newRound(9), strokes: 1, status: "holed", ball: { x: 40, y: 0.5 } },
+        });
+        const s = setup({ golfShot, ...onicai });
+        s.race.join("alice", "Alice");
+        s.race.setHole(course());
+        s.race.start();
+        s.race.setRound("alice", newRound(9));
+        await s.golf.shoot(GAME, "alice", 45, 60);
+        return s;
+    }
+
+    it("posts a finished race to onicai's feed once, with each round's key", async () => {
+        const postRace = vi.fn().mockResolvedValue({ id: 77 });
+        const { golf, race } = await wonRace({ postRace });
+        golf.tick();
+        golf.tick();
+        await flush();
+        golf.tick();
+        expect(postRace).toHaveBeenCalledTimes(1);
+        expect(postRace).toHaveBeenCalledWith([{ id: 9, key: "key-9" }]);
+        expect(race.data.feedPost).toBe(77);
+    });
+
+    it("leaves a race off the feed when onicai refuses it", async () => {
+        const postRace = vi.fn().mockRejectedValue(new OnicaiError("nobody has taken a shot yet", 409));
+        const { golf, race } = await wonRace({ postRace });
+        golf.tick();
+        await flush();
+        golf.tick();
+        expect(postRace).toHaveBeenCalledTimes(1);
+        expect(race.data.feedPost).toBe(0);
+    });
+
+    it("tries the post again later when onicai can't be reached", async () => {
+        const postRace = vi.fn().mockRejectedValue(new OnicaiError("Couldn't reach onicai"));
+        const { golf, race } = await wonRace({ postRace });
+        golf.tick();
+        await flush();
+        golf.tick();
+        expect(postRace).toHaveBeenCalledTimes(1);
+        expect(race.data.feedPost).toBeUndefined();
+    });
+
+    it("gives only a golfer with a round the page that saves it", async () => {
+        const saveUrl = vi.fn((id: number, key: string) => `https://x/golf/${id}#save=${key}`);
+        const { golf, race } = setup({ saveUrl });
+        race.join("alice", "Alice");
+        race.join("bob", "Bob");
+        race.setHole(course());
+        race.start();
+        race.setRound("alice", newRound(9));
+        expect(golf.saveUrl(GAME, "alice")).toBe("https://x/golf/9#save=key-9");
+        expect(golf.saveUrl(GAME, "bob")).toBeUndefined();
+        expect(golf.saveUrl(GAME, "carol")).toBeUndefined();
+    });
 });

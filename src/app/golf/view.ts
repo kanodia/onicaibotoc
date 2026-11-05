@@ -16,6 +16,7 @@ import {
     type GolferView,
     type GolfShared,
     type Point,
+    type SaveResponse,
     type ShotResponse,
 } from "../../games/golf/types";
 import { escape, minutesSeconds } from "../format";
@@ -56,6 +57,11 @@ let answered: GolferView | undefined;
 let timeUpTimer: ReturnType<typeof setTimeout> | undefined;
 /** The latest shot each golfer's had played, so each is played once */
 const seen = new Map<string, number>();
+/** The page that saves the player's round to their onicai profile, once the bot's given it */
+let saveUrl: string | undefined;
+let saveAskedAt = 0;
+/** How long a failed ask for it waits before it's asked again */
+const SAVE_RETRY_MS = 10_000;
 const flights = new Map<string, Flight>();
 /** The player's own last flight, drawn behind their ball */
 let trail: [number, number][] = [];
@@ -188,8 +194,10 @@ export const golfView: GameView = {
             <p class="hud">${hud(s.course)}</p>
             <p class="status">${escape(finishedText(s))}</p>
             <ol class="standings">${standings(s)}</ol>
+            <p class="save">${saveLink()}</p>
             <p class="muted small center">Every shot was simulated on onicai's canister. Tap ↗ to check a round on-chain.</p>
         </section>`;
+        if (s.golfers.some((g) => g.id === me() && g.roundId !== undefined)) askSave();
         canvas = body.querySelector("canvas")!;
         still = { course: s.course, golfers: s.golfers };
         draw();
@@ -212,6 +220,7 @@ function liveSkeleton(): string {
         </div>
         <p class="status" data-part="status"></p>
         <ol class="standings" data-part="standings"></ol>
+        <p class="save" data-part="save"></p>
     </section>`;
 }
 
@@ -233,6 +242,10 @@ function update(section: HTMLElement) {
     part("status").textContent = s.phase === "finished" ? finishedText(s) : statusText();
     const rows = standings(s);
     if (part("standings").innerHTML !== rows) part("standings").innerHTML = rows;
+    // Once the golfer's round is over, it can go to their onicai profile
+    if ((done || s.phase === "finished") && golfer?.roundId !== undefined) askSave();
+    const save = saveLink();
+    if (part("save").innerHTML !== save) part("save").innerHTML = save;
     draw();
 }
 
@@ -260,6 +273,27 @@ function statusText(): string {
             return g.strokes === 0
                 ? "Drag back from your ball to aim, or use the sliders, then shoot."
                 : `Shot ${g.strokes + 1}: you play from where your ball stopped.`;
+    }
+}
+
+function saveLink(): string {
+    if (saveUrl === undefined) return "";
+    return `<a href="${escape(saveUrl)}" target="_blank" rel="noopener">⛳ Save this round to your onicai play profile ↗</a>`;
+}
+
+/** Asks the bot for the page that saves the player's round, which only they may have */
+async function askSave() {
+    if (saveUrl !== undefined || Date.now() - saveAskedAt < SAVE_RETRY_MS) return;
+    saveAskedAt = Date.now();
+    try {
+        const response = await ctx.oc.fetch("/api/golf/save", { method: "POST" });
+        const answer = (await response.json()) as SaveResponse;
+        if (answer.ok && /^https?:\/\//.test(answer.url)) {
+            saveUrl = answer.url;
+            ctx.render();
+        }
+    } catch {
+        // Asked again on a later render
     }
 }
 

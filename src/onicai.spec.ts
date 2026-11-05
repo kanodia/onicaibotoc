@@ -26,6 +26,22 @@ describe("Onicai", () => {
         expect(init).toMatchObject({ method: "POST", body: "Open Chat\n13" });
     });
 
+    it("posts a race as its rounds, a round and its key a line", async () => {
+        const fetchFn = answering(200, { id: 12, kind: "race" });
+        const post = await new Onicai("https://x", fetchFn).postRace([
+            { id: 5, key: "a" },
+            { id: 6, key: "b" },
+        ]);
+        const [url, init] = fetchFn.mock.calls[0];
+        expect(url).toBe("https://x/api/feed/race");
+        expect(init).toMatchObject({ method: "POST", body: "5 a\n6 b" });
+        expect(post.id).toBe(12);
+    });
+
+    it("saves a round from a page with its key in the fragment", () => {
+        expect(new Onicai("https://x").saveUrl(5, "abc")).toBe("https://x/golf/5#save=abc");
+    });
+
     it("plays a shot with the round's key, angle and power", async () => {
         const fetchFn = answering(200, { frames: [[3, 0.2]], round: ROUND });
         await new Onicai("https://x", fetchFn).golfShot(5, "secret", 43.5, 81.5);

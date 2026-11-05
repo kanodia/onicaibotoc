@@ -137,3 +137,6 @@ export const GOLF_SETTINGS: readonly SettingSpec[] = [
 export function utcDay(now: number): number {
     return Math.floor(now / 86_400_000);
 }
+
+/** `POST /api/golf/save`'s answer: the page that saves the player's round to their onicai profile */
+export type SaveResponse = { ok: true; url: string } | { ok: false; error: string };
