@@ -1,0 +1,20 @@
+# OnicaiBot's systemd unit on OpenChat's EC2 host: /etc/systemd/system/oc-onicai-bot.service. It
+# runs `oc-onicai-bot-start`, which pulls the image `oc-onicai-bot:latest` from ECR, writes the
+# config from SSM Parameter Store and runs the container. The deploy workflow pushes a new `latest`
+# and restarts this unit.
+[Unit]
+Description=OnicaiBot
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+ExecStartPre=-/usr/bin/docker rm -f oc-onicai-bot
+ExecStart=/usr/local/bin/oc-onicai-bot-start
+# The bot writes its games to its data file as it stops
+ExecStop=/usr/bin/docker stop -t 20 oc-onicai-bot
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

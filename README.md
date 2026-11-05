@@ -80,6 +80,55 @@ To set the bot up in OpenChat:
 1.0.69, from open-chat-bots `main`. npm's latest release is 1.0.65, which predates MiniApps. Once a
 newer version is published, depend on that instead.
 
+## Deploying
+
+For now the bot runs on OpenChat's AWS, as the container `oc-onicai-bot` on the EC2 instance
+`i-0198f9d466e519454` in us-east-1, beside OpenChat's MiniApp service, bridges and MiniGameBot.
+Later it's to run on onicai's own machines.
+
+**Deploys** are done by the *Deploy OnicaiBot* GitHub Actions workflow
+([`deploy.yaml`](.github/workflows/deploy.yaml)), run by hand from `main`:
+
+- It tests the bot, builds the image with [`Dockerfile`](Dockerfile) on an arm runner, and pushes it
+  to OpenChat's ECR, `oc-onicai-bot`, tagged `latest` and with the commit. It then restarts the bot
+  on the host, which pulls `latest` as it starts.
+- If the bot doesn't start, or doesn't stay up for 30 seconds, the deploy fails, and systemd keeps
+  restarting it. Its logs are in CloudWatch, in `/oc/onicai-bot`.
+- It then checks the bot serves its definition at its public URL.
+- The config stays as it is in SSM Parameter Store, under `/oc-onicai-bot/`, and so do the games, in
+  `/var/lib/oc-onicai-bot` on the host. A restart doesn't end a race.
+- On a PR it only tests and builds.
+
+**What this repo can do on the host:** push the bot's image, and restart it. The restart is a fixed
+SSM document, [`aws/oc-onicai-bot-restart.yaml`](aws/oc-onicai-bot-restart.yaml), which takes no
+parameters, and the deploy role can run nothing else there. The container runs as `node`, with no
+capabilities and 256MB of memory, on a network of its own that can't reach the instance's
+metadata. So the bot can't reach the instance role's credentials, which would give it the other
+services' config.
+
+### Setting it up
+
+Once, before the first deploy, someone with OpenChat's AWS access runs
+[`aws/setup.sh`](aws/setup.sh). It makes:
+
+- the ECR repository and the log group;
+- the config: a new identity for the bot, plus OpenChat's public key and the MiniApp service's URL,
+  copied from MiniGameBot's;
+- the host role's policy, [`aws/instance-role-policy.json`](aws/instance-role-policy.json), and
+  port 8085 in the host's security group, from CloudFront only;
+- a CloudFront distribution in front of the host's 8085, which is the bot's public URL;
+- the deploy role, `GitHubActions-DeployOnicaiBot`, which GitHub can assume only from this repo's
+  `main` ([trust](aws/deploy-role-trust.json), [permissions](aws/deploy-role-policy.json));
+- the restart document, and the host's start script and unit, from [`aws/`](aws).
+
+The deploy can't change the restart document, the start script or the unit. So after changing one
+of them, run `aws/setup.sh` again.
+
+Then, after the first deploy, register the bot with `/register_bot`. Its endpoint is the public
+URL, and its principal is the one it logs as it starts. After a deploy that changes the
+definition, eg. a new game, run `/update_bot`. OpenChat refuses a card whose app isn't in the
+definition it holds.
+
 ## Open questions for onicai
 
 - **Capacity.** One shared fuel tank pays for every player. There's also a daily compute budget,

@@ -1,0 +1,28 @@
+# The SSM document `oc-onicai-bot-restart`, the only thing the deploy workflow can run on the host:
+# it restarts OnicaiBot, which pulls its latest image as it starts, and fails unless the bot stays
+# up for 30 seconds. It takes no parameters, so whoever can deploy the bot can't run anything else
+# on a host that OpenChat's own services share.
+schemaVersion: "2.2"
+description: Restarts OnicaiBot, which pulls its latest image as it starts, and checks it stays up
+mainSteps:
+  - action: aws:runShellScript
+    name: restart
+    inputs:
+      timeoutSeconds: "180"
+      runCommand:
+        - |
+          set -eu
+          fail() {
+            echo "OnicaiBot $1. systemd keeps restarting it. Its logs are in CloudWatch, in /oc/onicai-bot."
+            exit 1
+          }
+          systemctl restart oc-onicai-bot || fail "did not start"
+          pid=$(systemctl show -p MainPID --value oc-onicai-bot)
+          sleep 30
+          if ! systemctl is-active -q oc-onicai-bot || [ "$(systemctl show -p MainPID --value oc-onicai-bot)" != "$pid" ]; then
+            fail "did not stay up"
+          fi
+          docker inspect --format "Running {{.Config.Image}} ({{.Image}})" oc-onicai-bot
+          # The previous image, which each deploy leaves untagged. Pruning fails while another
+          # service's deploy prunes the same host, which is no reason to fail this one.
+          docker image prune -f || true
